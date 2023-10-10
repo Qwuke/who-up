@@ -29,7 +29,7 @@ struct TimerCounter {
 
 #[post("/timer")]
 fn add_timer(timer_count: &State<Arc<TimerCounter>>) -> String {
-    // Ordering can be relaxed in all operations - we're not heavily concerned about data correctness here
+    // Ordering can be relaxed in all operations - our commutative operations allow for correctness in any order heres
     let mut count = timer_count.count.fetch_add(HOUR_INCREMENT_IN_MS, Ordering::Relaxed) + HOUR_INCREMENT_IN_MS;
     if count > HOUR_INCREMENT_IN_MS * 6 {
         timer_count.count.swap(0, Ordering::Relaxed);
@@ -78,7 +78,6 @@ async fn timer_loop(context: Arc<TimerCounter>) {
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
-
     let config: Config = Figment::from(Toml::file("Secrets.toml")).extract().expect("There was an issue extracting the config");
     let discord_client = Client::new(config.discord_token);
     let channel_id = Id::new(config.discord_channel.parse().expect("There was an issue extracting the config"));
@@ -117,9 +116,7 @@ async fn main() -> Result<(), rocket::Error> {
     });
 
     // Start server
-    r
-        .launch()
-        .await?; 
+    r.launch().await?; 
 
     Ok(())
 }
