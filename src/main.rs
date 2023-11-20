@@ -8,9 +8,9 @@ use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 use twilight_http::Client;
 use twilight_model::id::{Id, marker::{MessageMarker, ChannelMarker}};
 
-static HOUR_INCREMENT_IN_MS: u64 = 3600000;
-static DISCORD_MESSAGE_PREFIX: &str = "HackManhattan will have people in it for the next";
-static DISCORD_MESSAGE_EMPTY: &str = "There is no one in HackManhattan 😴";
+const HOUR_INCREMENT_IN_MS: u64 = 3600000;
+const DISCORD_MESSAGE_PREFIX: &str = "HackManhattan will have people in it for the next";
+const DISCORD_MESSAGE_EMPTY: &str = "There is no one in HackManhattan 😴";
 
 #[macro_use] extern crate rocket;
 
@@ -29,7 +29,7 @@ struct TimerCounter {
 
 #[post("/timer")]
 fn add_timer(timer_count: &State<Arc<TimerCounter>>) -> String {
-    // Ordering can be relaxed in all operations - our commutative operations allow for correctness in any order heres
+    // Ordering can be relaxed in all operations - our commutative operations allow for correctness in any order
     let mut count = timer_count.count.fetch_add(HOUR_INCREMENT_IN_MS, Ordering::Relaxed) + HOUR_INCREMENT_IN_MS;
     if count > HOUR_INCREMENT_IN_MS * 6 {
         timer_count.count.swap(0, Ordering::Relaxed);
@@ -78,24 +78,24 @@ async fn timer_loop(context: Arc<TimerCounter>) {
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
-    let config: Config = Figment::from(Toml::file("Secrets.toml")).extract().expect("There was an issue extracting the config");
+    let config: Config = Figment::from(Toml::file("Secrets.toml")).extract().expect("Config should be extractable");
     let discord_client = Client::new(config.discord_token);
-    let channel_id = Id::new(config.discord_channel.parse().expect("There was an issue extracting the config"));
+    let channel_id = Id::new(config.discord_channel.parse().expect("Config file should be parsable"));
 
     // Create message in discord channel
     discord_client.create_message(channel_id)
         .content(DISCORD_MESSAGE_EMPTY)
         .expect("There was an issue creating the initial message request")
         .into_future().await
-        .expect("Initial message failed to send");
+        .expect("Initial message should have sent");
     
     let messages = discord_client.channel_messages(channel_id)
-        .limit(1).expect("Issue creating channel message request")
-        .await.expect("Issue retrieving channel messages")
+        .limit(1).expect("Channel message request should have been created")
+        .await.expect("Channel messages should be retrievable")
         .models()
-        .await.expect("Issue converting channel messages");
+        .await.expect("Channel messages should be convertable");
 
-    let message = messages.first().expect("Issue finding any channel messages");
+    let message = messages.first().expect("Should find at least one channel message");
         
     let context = Arc::new(TimerCounter { 
         count: AtomicU64::new(0),
